@@ -192,6 +192,31 @@ pub mod users {
             .map(|user| user.name)
     }
 
+#[cfg(any(target_os="linux", target_os="android" ))]
+    pub fn current_user_groups() -> Option<Vec<Gid>> {
+        // SAFETY:
+        // if first arg is 0 then it ignores second argument and returns number of groups present for given user.
+        let ngroups = unsafe { libc::getgroups(0,core::ptr::null::<gid_t> as *mut _) };
+        let mut buff: Vec<gid_t> = vec![0; ngroups as usize];
+
+
+        // SAFETY:
+        // buff is the size of ngroups and  getgroups reads max ngroups elements into buff
+        let found = unsafe { libc::getgroups(ngroups,buff.as_mut_ptr()) };
+
+        if found < 0 {
+            None
+        } else {
+            buff.truncate(ngroups as usize);
+            buff.sort_unstable();
+            buff.dedup();
+            buff.into_iter()
+                .filter_map(|i| get_group_by_gid(i as gid_t))
+                .map(|group| group.gid)
+                .collect::<Vec<_>>()
+                .into()
+        }
+    }
     /// Returns groups for a provided user name and primary group id.
     ///
     /// # libc functions used
