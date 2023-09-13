@@ -165,9 +165,8 @@ pub fn is_older(src: &Path, dst: &Path) -> Option<bool> {
 
 #[cfg(unix)]
 pub mod users {
-    use libc::{c_int, gid_t, uid_t};
+    use libc::{gid_t, uid_t};
     use nix::unistd::{Gid, Group, Uid, User};
-    use std::ffi::CString;
 
     pub fn get_user_by_uid(uid: uid_t) -> Option<User> {
         User::from_uid(Uid::from_raw(uid)).ok().flatten()
@@ -185,6 +184,7 @@ pub mod users {
         Gid::current().as_raw()
     }
 
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
     pub fn get_current_username() -> Option<String> {
         User::from_uid(Uid::current())
             .ok()
@@ -231,7 +231,9 @@ pub mod users {
     ///     println!("User is a member of group #{group}");
     /// }
     /// ```
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
     pub fn get_user_groups(username: &str, gid: gid_t) -> Option<Vec<Gid>> {
+        use std::ffi::CString;
         // MacOS uses i32 instead of gid_t in getgrouplist for unknown reasons
         #[cfg(target_os = "macos")]
         let mut buff: Vec<i32> = vec![0; 1024];
@@ -242,7 +244,7 @@ pub mod users {
             return None;
         };
 
-        let mut count = buff.len() as c_int;
+        let mut count = buff.len() as libc::c_int;
 
         // MacOS uses i32 instead of gid_t in getgrouplist for unknown reasons
         // SAFETY:
