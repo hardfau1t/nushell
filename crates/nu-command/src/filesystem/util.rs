@@ -206,7 +206,7 @@ pub mod users {
         if found < 0 {
             None
         } else {
-            buff.truncate(ngroups as usize);
+            buff.truncate(found as usize);
             buff.sort_unstable();
             buff.dedup();
             buff.into_iter()
